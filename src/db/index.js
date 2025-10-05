@@ -1,8 +1,10 @@
 import pkg from 'pg';
+import config from '../config.js';
+
 const { Pool } = pkg;
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: config.databaseUrl,
   // ssl: { rejectUnauthorized: false }, // Uncomment for Render/prod
 });
 
