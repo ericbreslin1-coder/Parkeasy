@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import pool from '../db/index.js';
+import config from '../config.js';
 
 const router = express.Router();
 
@@ -68,7 +69,7 @@ router.post('/login', async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
-      process.env.JWT_SECRET,
+      config.jwtSecret,
       { expiresIn: '24h' }
     );
 
