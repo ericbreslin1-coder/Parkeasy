@@ -116,6 +116,8 @@ Response: 200 OK
     {
       "id": 1,
       "location": "123 Main St",
+      "latitude": 40.7128,
+      "longitude": -74.0060,
       "is_available": true,
       "user_id": 1,
       "created_at": "2024-01-01T00:00:00.000Z"
@@ -132,6 +134,8 @@ Content-Type: application/json
 
 {
   "location": "123 Main St",
+  "latitude": 40.7128,
+  "longitude": -74.0060,
   "is_available": true
 }
 
@@ -141,6 +145,8 @@ Response: 201 Created
   "spot": {
     "id": 1,
     "location": "123 Main St",
+    "latitude": 40.7128,
+    "longitude": -74.0060,
     "is_available": true,
     "user_id": 1,
     "created_at": "2024-01-01T00:00:00.000Z"
@@ -156,6 +162,8 @@ Content-Type: application/json
 
 {
   "location": "456 Oak Ave",
+  "latitude": 40.7580,
+  "longitude": -73.9855,
   "is_available": false
 }
 
@@ -165,6 +173,8 @@ Response: 200 OK
   "spot": {
     "id": 1,
     "location": "456 Oak Ave",
+    "latitude": 40.7580,
+    "longitude": -73.9855,
     "is_available": false,
     "user_id": 1,
     "created_at": "2024-01-01T00:00:00.000Z"
