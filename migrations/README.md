@@ -39,6 +39,8 @@ psql postgresql://username:password@host:port/parkeasy -f migrations/002_create_
 ### parking_spots table
 - `id` - Primary key (auto-increment)
 - `location` - Location description/address of the parking spot
+- `latitude` - Latitude coordinate (float, nullable, range: -90 to 90)
+- `longitude` - Longitude coordinate (float, nullable, range: -180 to 180)
 - `is_available` - Boolean flag indicating if spot is available
 - `user_id` - Foreign key to users table (nullable, set to NULL on user deletion)
 - `created_at` - Timestamp of spot creation

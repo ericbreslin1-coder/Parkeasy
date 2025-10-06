@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, location, is_available, user_id, created_at FROM parking_spots ORDER BY created_at DESC'
+      'SELECT id, location, latitude, longitude, is_available, user_id, created_at FROM parking_spots ORDER BY created_at DESC'
     );
     res.json({ spots: result.rows });
   } catch (error) {
@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 // Create a new parking spot (protected)
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { location, is_available } = req.body;
+    const { location, latitude, longitude, is_available } = req.body;
     const userId = req.user.userId;
 
     // Validate input
@@ -28,10 +28,31 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Location is required' });
     }
 
+    // Validate latitude and longitude if provided
+    if (latitude !== undefined && latitude !== null) {
+      const lat = parseFloat(latitude);
+      if (isNaN(lat) || lat < -90 || lat > 90) {
+        return res.status(400).json({ error: 'Latitude must be a number between -90 and 90' });
+      }
+    }
+
+    if (longitude !== undefined && longitude !== null) {
+      const lon = parseFloat(longitude);
+      if (isNaN(lon) || lon < -180 || lon > 180) {
+        return res.status(400).json({ error: 'Longitude must be a number between -180 and 180' });
+      }
+    }
+
     // Insert new parking spot
     const result = await pool.query(
-      'INSERT INTO parking_spots (location, is_available, user_id) VALUES ($1, $2, $3) RETURNING *',
-      [location, is_available !== undefined ? is_available : true, userId]
+      'INSERT INTO parking_spots (location, latitude, longitude, is_available, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [
+        location,
+        latitude !== undefined && latitude !== null ? parseFloat(latitude) : null,
+        longitude !== undefined && longitude !== null ? parseFloat(longitude) : null,
+        is_available !== undefined ? is_available : true,
+        userId
+      ]
     );
 
     res.status(201).json({
@@ -49,7 +70,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const spotId = req.params.id;
     const userId = req.user.userId;
-    const { location, is_available } = req.body;
+    const { location, latitude, longitude, is_available } = req.body;
 
     // Check if spot exists and user owns it
     const checkResult = await pool.query(
@@ -74,6 +95,38 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (location !== undefined) {
       updates.push(`location = $${paramCount}`);
       values.push(location);
+      paramCount++;
+    }
+
+    if (latitude !== undefined) {
+      // Validate latitude if provided and not null
+      if (latitude !== null) {
+        const lat = parseFloat(latitude);
+        if (isNaN(lat) || lat < -90 || lat > 90) {
+          return res.status(400).json({ error: 'Latitude must be a number between -90 and 90' });
+        }
+        updates.push(`latitude = $${paramCount}`);
+        values.push(lat);
+      } else {
+        updates.push(`latitude = $${paramCount}`);
+        values.push(null);
+      }
+      paramCount++;
+    }
+
+    if (longitude !== undefined) {
+      // Validate longitude if provided and not null
+      if (longitude !== null) {
+        const lon = parseFloat(longitude);
+        if (isNaN(lon) || lon < -180 || lon > 180) {
+          return res.status(400).json({ error: 'Longitude must be a number between -180 and 180' });
+        }
+        updates.push(`longitude = $${paramCount}`);
+        values.push(lon);
+      } else {
+        updates.push(`longitude = $${paramCount}`);
+        values.push(null);
+      }
       paramCount++;
     }
 
