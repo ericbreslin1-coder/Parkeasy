@@ -136,4 +136,134 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Reserve a parking spot (protected)
+router.post('/:id/reserve', authenticateToken, async (req, res) => {
+  try {
+    const spotId = req.params.id;
+    const userId = req.user.userId;
+
+    // Validate spot ID
+    if (!spotId || isNaN(spotId)) {
+      return res.status(400).json({ error: 'Invalid parking spot ID' });
+    }
+
+    // Check if spot exists
+    const spotResult = await pool.query(
+      'SELECT * FROM parking_spots WHERE id = $1',
+      [spotId]
+    );
+
+    if (spotResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Parking spot not found' });
+    }
+
+    const spot = spotResult.rows[0];
+
+    // Check if spot is available
+    if (!spot.is_available) {
+      return res.status(400).json({ error: 'Parking spot is not available' });
+    }
+
+    // Check if there's already an active reservation for this spot
+    const existingReservation = await pool.query(
+      'SELECT * FROM reservations WHERE parking_spot_id = $1 AND status = $2',
+      [spotId, 'active']
+    );
+
+    if (existingReservation.rows.length > 0) {
+      return res.status(409).json({ error: 'Parking spot is already reserved' });
+    }
+
+    // Start a transaction
+    await pool.query('BEGIN');
+
+    try {
+      // Create the reservation
+      const reservationResult = await pool.query(
+        'INSERT INTO reservations (user_id, parking_spot_id, status) VALUES ($1, $2, $3) RETURNING *',
+        [userId, spotId, 'active']
+      );
+
+      // Update parking spot availability
+      await pool.query(
+        'UPDATE parking_spots SET is_available = $1 WHERE id = $2',
+        [false, spotId]
+      );
+
+      await pool.query('COMMIT');
+
+      res.status(201).json({
+        message: 'Parking spot reserved successfully',
+        reservation: reservationResult.rows[0]
+      });
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error reserving parking spot:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Cancel a reservation (protected)
+router.delete('/:id/reserve', authenticateToken, async (req, res) => {
+  try {
+    const spotId = req.params.id;
+    const userId = req.user.userId;
+
+    // Validate spot ID
+    if (!spotId || isNaN(spotId)) {
+      return res.status(400).json({ error: 'Invalid parking spot ID' });
+    }
+
+    // Check if there's an active reservation for this spot
+    const reservationResult = await pool.query(
+      'SELECT * FROM reservations WHERE parking_spot_id = $1 AND status = $2',
+      [spotId, 'active']
+    );
+
+    if (reservationResult.rows.length === 0) {
+      return res.status(404).json({ error: 'No active reservation found for this parking spot' });
+    }
+
+    const reservation = reservationResult.rows[0];
+
+    // Check if the user owns the reservation
+    if (reservation.user_id !== userId) {
+      return res.status(403).json({ error: 'You can only cancel your own reservations' });
+    }
+
+    // Start a transaction
+    await pool.query('BEGIN');
+
+    try {
+      // Update reservation status to cancelled
+      await pool.query(
+        'UPDATE reservations SET status = $1, cancelled_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['cancelled', reservation.id]
+      );
+
+      // Update parking spot availability
+      await pool.query(
+        'UPDATE parking_spots SET is_available = $1 WHERE id = $2',
+        [true, spotId]
+      );
+
+      await pool.query('COMMIT');
+
+      res.json({
+        message: 'Reservation cancelled successfully',
+        reservationId: reservation.id
+      });
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error cancelling reservation:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
