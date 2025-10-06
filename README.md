@@ -7,8 +7,10 @@ A Node.js/Express backend for the ParkEasy parking management system with JWT au
 - User registration and authentication with JWT
 - Password hashing with bcrypt
 - CRUD operations for parking spots
+- Reservation and booking system for parking spots
 - Authorization middleware for protected endpoints
 - Ownership-based access control
+- Prevention of double-booking
 
 ## Setup
 
@@ -44,6 +46,7 @@ createdb parkeasy
 # Run migrations
 psql -d parkeasy -f migrations/001_create_users_table.sql
 psql -d parkeasy -f migrations/002_create_parking_spots_table.sql
+psql -d parkeasy -f migrations/003_create_reservations_table.sql
 ```
 
 4. Start the server:
@@ -184,6 +187,59 @@ Response: 200 OK
 }
 ```
 
+### Reservation Endpoints
+
+#### Reserve a Parking Spot (Protected)
+```
+POST /api/parking/:id/reserve
+Authorization: Bearer <token>
+
+Response: 201 Created
+{
+  "message": "Parking spot reserved successfully",
+  "reservation": {
+    "id": 1,
+    "user_id": 1,
+    "parking_spot_id": 1,
+    "reserved_at": "2024-01-01T00:00:00.000Z",
+    "status": "active",
+    "cancelled_at": null
+  }
+}
+```
+
+**Requirements:**
+- User must be authenticated
+- Parking spot must exist and be available
+- No active reservation must exist for the spot
+
+**Errors:**
+- `400` - Invalid parking spot ID or spot not available
+- `404` - Parking spot not found
+- `409` - Parking spot is already reserved
+
+#### Cancel a Reservation (Protected)
+```
+DELETE /api/parking/:id/reserve
+Authorization: Bearer <token>
+
+Response: 200 OK
+{
+  "message": "Reservation cancelled successfully",
+  "reservationId": 1
+}
+```
+
+**Requirements:**
+- User must be authenticated
+- An active reservation must exist for the spot
+- User can only cancel their own reservations
+
+**Errors:**
+- `400` - Invalid parking spot ID
+- `403` - User trying to cancel another user's reservation
+- `404` - No active reservation found for this parking spot
+
 ## Authorization
 
 Protected endpoints require a JWT token in the Authorization header:
@@ -243,7 +299,8 @@ Users can only update or delete parking spots they own (where `user_id` matches 
 .
 ├── migrations/              # Database migration files
 │   ├── 001_create_users_table.sql
-│   └── 002_create_parking_spots_table.sql
+│   ├── 002_create_parking_spots_table.sql
+│   └── 003_create_reservations_table.sql
 ├── src/
 │   ├── config.js           # Configuration and environment variables
 │   ├── db/
@@ -252,7 +309,7 @@ Users can only update or delete parking spots they own (where `user_id` matches 
 │   │   └── auth.js         # JWT authentication middleware
 │   ├── routes/
 │   │   ├── auth.js         # Authentication endpoints
-│   │   └── parking.js      # Parking spot CRUD endpoints
+│   │   └── parking.js      # Parking spot CRUD and reservation endpoints
 │   └── index.js            # Main application entry point
 ├── .env.example            # Environment variables template
 └── package.json            # Project dependencies

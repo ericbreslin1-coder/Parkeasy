@@ -13,6 +13,7 @@ createdb parkeasy
 # Run migrations in order
 psql -d parkeasy -f migrations/001_create_users_table.sql
 psql -d parkeasy -f migrations/002_create_parking_spots_table.sql
+psql -d parkeasy -f migrations/003_create_reservations_table.sql
 ```
 
 Or with a PostgreSQL connection string:
@@ -20,12 +21,14 @@ Or with a PostgreSQL connection string:
 ```bash
 psql postgresql://username:password@host:port/parkeasy -f migrations/001_create_users_table.sql
 psql postgresql://username:password@host:port/parkeasy -f migrations/002_create_parking_spots_table.sql
+psql postgresql://username:password@host:port/parkeasy -f migrations/003_create_reservations_table.sql
 ```
 
 ## Migration Files
 
 - `001_create_users_table.sql` - Creates the users table with authentication fields
 - `002_create_parking_spots_table.sql` - Creates the parking_spots table with foreign key to users
+- `003_create_reservations_table.sql` - Creates the reservations table for parking spot bookings
 
 ## Schema Overview
 
@@ -42,3 +45,11 @@ psql postgresql://username:password@host:port/parkeasy -f migrations/002_create_
 - `is_available` - Boolean flag indicating if spot is available
 - `user_id` - Foreign key to users table (nullable, set to NULL on user deletion)
 - `created_at` - Timestamp of spot creation
+
+### reservations table
+- `id` - Primary key (auto-increment)
+- `user_id` - Foreign key to users table (deleted on user deletion)
+- `parking_spot_id` - Foreign key to parking_spots table (deleted on spot deletion)
+- `reserved_at` - Timestamp of reservation creation
+- `status` - Reservation status ('active' or 'cancelled')
+- `cancelled_at` - Timestamp of reservation cancellation (nullable)
