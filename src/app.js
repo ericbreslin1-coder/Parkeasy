@@ -10,6 +10,7 @@ import adminRoutes from './routes/admin.js';
 import healthRoutes from './routes/health.js';
 import initRoutes from './routes/init.js';
 import dbtestRoutes from './routes/dbtest.js';
+import migrateRoutes from './routes/migrate.js';
 
 export function createApp() {
   const app = express();
@@ -59,6 +60,7 @@ export function createApp() {
   app.use('/api/health', healthRoutes); // unauthenticated health check
   app.use('/api/init', initRoutes); // database initialization
   app.use('/api/dbtest', dbtestRoutes); // database connectivity test
+  app.use('/api/migrate', migrateRoutes); // manual migrations
   app.use('/api/auth', authLimiter, authRoutes);
   app.use('/api/parking', parkingRoutes);
   app.use('/api/reviews', reviewsRoutes);
