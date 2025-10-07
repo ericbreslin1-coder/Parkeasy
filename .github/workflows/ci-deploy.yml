@@ -90,14 +90,16 @@ jobs:
       - name: Detect Frontend Folder
         id: detect
         run: |
-          if [ -d "frontend" ]; then echo "found=true" >> $GITHUB_OUTPUT; else echo "found=false" >> $GITHUB_OUTPUT; fi
+          if [ -d "frontend" ]; then echo "found=true" >> $GITHUB_OUTPUT; echo "dir=frontend" >> $GITHUB_OUTPUT; \
+          elif [ -d "parkeasy-frontend-clean" ]; then echo "found=true" >> $GITHUB_OUTPUT; echo "dir=parkeasy-frontend-clean" >> $GITHUB_OUTPUT; \
+          else echo "found=false" >> $GITHUB_OUTPUT; fi
 
       - name: Install & Build Frontend
         if: steps.detect.outputs.found == 'true'
-        working-directory: frontend
+        working-directory: ${{ steps.detect.outputs.dir }}
         env:
-            CI: "true"
-            REACT_APP_API_URL: ${{ secrets.FRONTEND_API_URL || 'http://localhost:3000/api' }}
+          CI: "true"
+          REACT_APP_API_URL: ${{ secrets.FRONTEND_API_URL || 'http://localhost:3000/api' }}
         run: |
           npm ci
           npm run build
@@ -113,23 +115,17 @@ jobs:
     if: github.ref == 'refs/heads/main' && needs.backend-test.result == 'success'
     steps:
       - name: Trigger Render Deploy (Backend)
-        if: env.RENDER_HOOK_SET == 'true'
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
           if [ -n "$RENDER_DEPLOY_HOOK" ]; then curl -X POST "$RENDER_DEPLOY_HOOK" -f -s -o /dev/null && echo "Render deploy triggered."; else echo "Render hook not set"; fi
 
       - name: Trigger Vercel Deploy (Frontend)
-        if: env.VERCEL_HOOK_SET == 'true'
         env:
           VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
         run: |
           if [ -n "$VERCEL_DEPLOY_HOOK" ]; then curl -X POST "$VERCEL_DEPLOY_HOOK" -f -s -o /dev/null && echo "Vercel deploy triggered."; else echo "Vercel hook not set"; fi
 
-      - name: Report Missing Hooks (Info)
-        run: |
-          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then echo "NOTE: RENDER_DEPLOY_HOOK secret not configured."; fi
-          if [ -z "${{ secrets.VERCEL_DEPLOY_HOOK }}" ]; then echo "NOTE: VERCEL_DEPLOY_HOOK secret not configured."; fi
 
 # HOW TO ENABLE AUTO DEPLOY:
 # 1. In GitHub repo settings -> Secrets and variables -> Actions, add:
