@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+
 function ParkingList() {
   const [spots, setSpots] = useState([]);
   const [searchLocation, setSearchLocation] = useState('');
@@ -14,7 +16,7 @@ function ParkingList() {
 
   const fetchParkingSpots = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/parking');
+      const response = await fetch(`${API_BASE}/parking`);
       if (response.ok) {
         const data = await response.json();
         setSpots(data);
@@ -155,7 +157,7 @@ function AddSpotForm({ onSpotAdded, onCancel }) {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/api/parking', {
+      const response = await fetch(`${API_BASE}/parking`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

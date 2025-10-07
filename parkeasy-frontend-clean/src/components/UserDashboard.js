@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+
 function UserDashboard() {
   const { user, token, logout } = useAuth();
   const [mySpots, setMySpots] = useState([]);
@@ -14,7 +16,7 @@ function UserDashboard() {
   const fetchMyData = async () => {
     try {
       // Fetch user's parking spots
-      const spotsResponse = await fetch('http://localhost:3000/api/parking/my-spots', {
+      const spotsResponse = await fetch(`${API_BASE}/parking/my-spots`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (spotsResponse.ok) {
@@ -40,7 +42,7 @@ function UserDashboard() {
   const handleDeleteSpot = async (spotId) => {
     if (window.confirm('Are you sure you want to delete this parking spot?')) {
       try {
-        const response = await fetch(`http://localhost:3000/api/parking/${spotId}`, {
+        const response = await fetch(`${API_BASE}/parking/${spotId}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });

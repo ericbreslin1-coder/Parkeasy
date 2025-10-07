@@ -199,6 +199,26 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get user's own parking spots (must be before /:id route)
+router.get('/my-spots', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const result = await pool.query(
+      `SELECT id, location, is_available, user_id, created_at
+       FROM parking_spots
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    res.json({ spots: result.rows });
+  } catch (error) {
+    console.error('Error fetching user parking spots:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Get a single parking spot with full details (public)
 router.get('/:id', async (req, res) => {
   try {
@@ -263,26 +283,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting parking spot:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get user's own parking spots
-router.get('/my-spots', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-
-    const result = await pool.query(
-      `SELECT id, location, is_available, user_id, created_at
-       FROM parking_spots
-       WHERE user_id = $1
-       ORDER BY created_at DESC`,
-      [userId]
-    );
-
-    res.json({ spots: result.rows });
-  } catch (error) {
-    console.error('Error fetching user parking spots:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
