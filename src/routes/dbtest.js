@@ -135,3 +135,5 @@ router.post('/test-user-creation', async (req, res) => {
     });
   }
 });
+
+export default router;
