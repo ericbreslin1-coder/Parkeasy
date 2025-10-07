@@ -101,8 +101,11 @@ jobs:
           CI: "true"
           REACT_APP_API_URL: ${{ secrets.FRONTEND_API_URL || 'http://localhost:3000/api' }}
         run: |
+          echo "Using REACT_APP_API_URL=$REACT_APP_API_URL"
           npm ci
+          echo "Dependencies installed. Starting build..."
           npm run build
+          echo "Frontend build completed."
 
       - name: Skip Notice
         if: steps.detect.outputs.found == 'false'
