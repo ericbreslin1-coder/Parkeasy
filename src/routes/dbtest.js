@@ -27,13 +27,40 @@ router.get('/test-db', async (req, res) => {
       canCreateTables = false;
     }
     
-    // Test 4: List all existing tables
+    // Test 4: List all existing tables with more detail
     const existingTables = await pool.query(`
-      SELECT table_name, table_type
-      FROM information_schema.tables 
+      SELECT 
+        table_name, 
+        table_type,
+        (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as column_count
+      FROM information_schema.tables t
       WHERE table_schema = 'public'
       ORDER BY table_name
     `);
+    
+    // Test 4.5: Get ALL schemas and tables (not just public)
+    const allTables = await pool.query(`
+      SELECT table_schema, table_name, table_type
+      FROM information_schema.tables 
+      WHERE table_type = 'BASE TABLE'
+      ORDER BY table_schema, table_name
+    `);
+    
+    // Test 4.6: Check if users table exists anywhere
+    const usersTableCheck = await pool.query(`
+      SELECT table_schema, table_name
+      FROM information_schema.tables 
+      WHERE table_name = 'users'
+    `);
+    
+    // Test 4.7: Try to count users directly (will fail if table doesn't exist)
+    let userCount = null;
+    try {
+      const countResult = await pool.query('SELECT COUNT(*) as count FROM users');
+      userCount = countResult.rows[0].count;
+    } catch (error) {
+      userCount = `Error: ${error.message}`;
+    }
     
     // Test 5: Check DATABASE_URL (without exposing the full URL)
     const dbUrl = process.env.DATABASE_URL;
@@ -50,6 +77,9 @@ router.get('/test-db', async (req, res) => {
         databaseInfo: dbInfo.rows[0],
         canCreateTables: canCreateTables,
         existingTables: existingTables.rows,
+        allTables: allTables.rows,
+        usersTableCheck: usersTableCheck.rows,
+        userCount: userCount,
         databaseUrl: dbUrlInfo
       }
     });
