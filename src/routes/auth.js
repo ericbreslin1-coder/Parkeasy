@@ -181,6 +181,19 @@ router.post('/create-admin', async (req, res) => {
     const adminPassword = 'admin123';
     const adminName = 'Admin User';
 
+    // FIRST: Check if is_admin column exists and add it if not
+    const schemaResult = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' AND column_name = 'is_admin'
+    `);
+    
+    if (schemaResult.rows.length === 0) {
+      console.log('Adding is_admin column...');
+      await pool.query('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE');
+      console.log('✅ Added is_admin column');
+    }
+
     // Check if admin already exists
     const existing = await pool.query('SELECT * FROM users WHERE email = $1', [adminEmail]);
     if (existing.rows.length > 0) {
