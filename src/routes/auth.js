@@ -181,7 +181,22 @@ router.post('/create-admin', async (req, res) => {
     const adminPassword = 'admin123';
     const adminName = 'Admin User';
 
-    // FIRST: Check if is_admin column exists and add it if not
+    // FIRST: Create the users table if it doesn't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Users table created/verified');
+
+    // Create index on email
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+
+    // SECOND: Check if is_admin column exists and add it if not
     const schemaResult = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
