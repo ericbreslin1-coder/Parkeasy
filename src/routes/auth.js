@@ -181,7 +181,10 @@ router.post('/create-admin', async (req, res) => {
     const adminPassword = 'admin123';
     const adminName = 'Admin User';
 
-    // STEP 1: Create the users table with all columns from the start
+    const results = [];
+    
+    console.log('🔄 Step 1: Creating users table...');
+    // STEP 1: Create the users table with ALL required columns
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -193,7 +196,10 @@ router.post('/create-admin', async (req, res) => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+    results.push('✅ Users table created');
 
+    console.log('🔄 Step 2: Creating parking_spots table...');
     // STEP 2: Create parking_spots table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS parking_spots (
@@ -209,7 +215,10 @@ router.post('/create-admin', async (req, res) => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_parking_spots_user_id ON parking_spots(user_id)');
+    results.push('✅ Parking spots table created');
 
+    console.log('🔄 Step 3: Creating reviews table...');
     // STEP 3: Create reviews table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reviews (
@@ -221,41 +230,86 @@ router.post('/create-admin', async (req, res) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-
-    // STEP 4: Create indexes
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_parking_spots_user_id ON parking_spots(user_id)');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_reviews_parking_spot_id ON reviews(parking_spot_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id)');
+    results.push('✅ Reviews table created');
 
+    console.log('🔄 Step 4: Creating update triggers...');
+    // STEP 4: Create update trigger function
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+          NEW.updated_at = CURRENT_TIMESTAMP;
+          RETURN NEW;
+      END;
+      $$ language 'plpgsql'
+    `);
+
+    // Create triggers
+    await pool.query(`
+      DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+      CREATE TRIGGER update_users_updated_at 
+      BEFORE UPDATE ON users 
+      FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+    `);
+
+    await pool.query(`
+      DROP TRIGGER IF EXISTS update_parking_spots_updated_at ON parking_spots;
+      CREATE TRIGGER update_parking_spots_updated_at 
+      BEFORE UPDATE ON parking_spots 
+      FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
+    `);
+    results.push('✅ Update triggers created');
+
+    console.log('🔄 Step 5: Creating/updating admin user...');
     // STEP 5: Check if admin already exists
     const existing = await pool.query('SELECT * FROM users WHERE email = $1', [adminEmail]);
     if (existing.rows.length > 0) {
       await pool.query('UPDATE users SET is_admin = true WHERE email = $1', [adminEmail]);
-      return res.json({ 
-        message: 'Admin user updated and database initialized', 
-        email: adminEmail, 
-        password: adminPassword,
-        tablesCreated: true
-      });
+      results.push('✅ Admin user updated');
+    } else {
+      // Hash password and create admin user
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      const result = await pool.query(
+        'INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, name, email, is_admin',
+        [adminName, adminEmail, hashedPassword, true]
+      );
+      results.push(`✅ Admin user created: ${result.rows[0].email}`);
     }
 
-    // STEP 6: Hash password and create admin user
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
-    const result = await pool.query(
-      'INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, name, email, is_admin',
-      [adminName, adminEmail, hashedPassword, true]
-    );
+    console.log('🔄 Step 6: Verifying tables...');
+    // STEP 6: Verify everything was created
+    const tables = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      ORDER BY table_name
+    `);
+
+    const userCount = await pool.query('SELECT COUNT(*) as count FROM users');
+    
+    console.log('✅ All steps completed successfully!');
+    console.log('Tables created:', tables.rows.map(r => r.table_name));
+    console.log('Total users:', userCount.rows[0].count);
 
     res.json({ 
-      message: 'Admin user created and database initialized successfully', 
-      user: result.rows[0],
+      message: 'Database fully initialized and admin user ready', 
       email: adminEmail,
       password: adminPassword,
-      tablesCreated: true
+      results: results,
+      verification: {
+        tablesCreated: tables.rows.map(r => r.table_name),
+        totalUsers: parseInt(userCount.rows[0].count)
+      }
     });
   } catch (error) {
-    console.error('Error creating admin and initializing DB:', error);
-    res.status(500).json({ error: error.message, details: error.stack });
+    console.error('Error in database initialization:', error);
+    res.status(500).json({ 
+      error: error.message, 
+      details: error.stack,
+      code: error.code 
+    });
   }
 });
 
