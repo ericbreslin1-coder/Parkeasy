@@ -26,4 +26,35 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Debug endpoint to check database schema
+router.get('/debug', async (req, res) => {
+  try {
+    // Check if tables exist and their structure
+    const tables = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      ORDER BY table_name
+    `);
+    
+    const userColumns = await pool.query(`
+      SELECT column_name, data_type, is_nullable, column_default
+      FROM information_schema.columns 
+      WHERE table_name = 'users' 
+      ORDER BY ordinal_position
+    `);
+
+    res.json({
+      tables: tables.rows.map(r => r.table_name),
+      userTableColumns: userColumns.rows,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 export default router;

@@ -174,4 +174,40 @@ router.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// TEMPORARY: Create admin user endpoint (remove after testing)
+router.post('/create-admin', async (req, res) => {
+  try {
+    const adminEmail = 'admin@parkeasy.com';
+    const adminPassword = 'admin123';
+    const adminName = 'Admin User';
+
+    // Check if admin already exists
+    const existing = await pool.query('SELECT * FROM users WHERE email = $1', [adminEmail]);
+    if (existing.rows.length > 0) {
+      // Update existing user to be admin
+      await pool.query('UPDATE users SET is_admin = true WHERE email = $1', [adminEmail]);
+      return res.json({ message: 'Admin user updated', email: adminEmail, password: adminPassword });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+    // Create admin user
+    const result = await pool.query(
+      'INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, name, email, is_admin',
+      [adminName, adminEmail, hashedPassword, true]
+    );
+
+    res.json({ 
+      message: 'Admin user created successfully', 
+      user: result.rows[0],
+      email: adminEmail,
+      password: adminPassword
+    });
+  } catch (error) {
+    console.error('Error creating admin:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
