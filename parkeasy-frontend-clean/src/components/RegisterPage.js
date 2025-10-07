@@ -27,7 +27,7 @@ function RegisterPage({ onSwitchToLogin }) {
     setLoading(true);
     const result = await register(name, email, password);
     if (!result.success) {
-      setMessage(result.message);
+      setMessage(result.error || 'Registration failed');
     }
     setLoading(false);
   };

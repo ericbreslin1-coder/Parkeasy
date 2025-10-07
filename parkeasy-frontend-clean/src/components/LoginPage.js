@@ -15,7 +15,7 @@ function LoginPage({ onSwitchToRegister, onAdminLogin }) {
 
     const result = await login(email, password);
     if (!result.success) {
-      setMessage(result.message);
+      setMessage(result.error || 'Login failed');
     }
     setLoading(false);
   };
