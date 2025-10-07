@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.js';
 import parkingRoutes from './routes/parking.js';
 import reviewsRoutes from './routes/reviews.js';
 import adminRoutes from './routes/admin.js';
+import healthRoutes from './routes/health.js';
 
 export function createApp() {
   const app = express();
@@ -41,6 +42,7 @@ export function createApp() {
   app.get('/', (req,res)=> res.send('ParkEasy Backend is running!'));
 
   // Routes already imported top-level
+  app.use('/api/health', healthRoutes); // unauthenticated health check
   app.use('/api/auth', authLimiter, authRoutes);
   app.use('/api/parking', parkingRoutes);
   app.use('/api/reviews', reviewsRoutes);

@@ -1,184 +1,182 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { adminAPI } from './services/api';
 
-function AdminDashboard({ token, onLogout }) {
+function AdminDashboard({ onLogout }) {
   const [users, setUsers] = useState([]);
-  const [parkingSpots, setParkingSpots] = useState([]);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalSpots: 0,
-    totalRevenue: 0
-  });
+  const [spots, setSpots] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    fetchData();
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const [statsRes, usersRes, spotsRes, reviewsRes] = await Promise.all([
+        adminAPI.stats(),
+        adminAPI.users(),
+        adminAPI.spots(),
+        adminAPI.reviews()
+      ]);
+      setStats(statsRes.data);
+      setUsers(usersRes.data.users || []);
+      setSpots(spotsRes.data.parkingSpots || []);
+      setReviews(reviewsRes.data.reviews || []);
+    } catch (e) {
+      console.error(e);
+      setError('Failed to load admin data');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const fetchData = async () => {
-    try {
-      // Fetch users
-      const usersResponse = await fetch('http://localhost:3000/api/admin/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
-        setUsers(usersData);
-      }
+  useEffect(() => { load(); }, [load]);
 
-      // Fetch parking spots
-      const spotsResponse = await fetch('http://localhost:3000/api/parking', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (spotsResponse.ok) {
-        const spotsData = await spotsResponse.json();
-        setParkingSpots(spotsData);
-      }
-
-      // Update stats
-      setStats({
-        totalUsers: users.length,
-        totalSpots: parkingSpots.length,
-        totalRevenue: parkingSpots.reduce((sum, spot) => sum + (spot.price || 0), 0)
-      });
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm('Delete this user?')) return;
+    try { await adminAPI.deleteUser(id); load(); } catch { alert('Delete failed'); }
+  };
+  const handleDeleteSpot = async (id) => {
+    if (!window.confirm('Delete this spot?')) return;
+    try { await adminAPI.deleteSpot(id); load(); } catch { alert('Delete failed'); }
+  };
+  const handleDeleteReview = async (id) => {
+    if (!window.confirm('Delete this review?')) return;
+    try { await adminAPI.deleteReview(id); load(); } catch { alert('Delete failed'); }
   };
 
+  if (loading) return <div style={{ padding: 40 }}>Loading admin data...</div>;
+  if (error) return <div style={{ padding: 40, color: 'red' }}>{error}</div>;
+
+  const statCard = (label, value, color='#1976d2') => (
+    <div style={{ background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <div style={{ fontSize: 12, letterSpacing: .5, textTransform: 'uppercase', color: '#555' }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 600, color }}>{value}</div>
+    </div>
+  );
+
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1>Admin Dashboard</h1>
-        <button 
-          onClick={onLogout}
-          style={{ 
-            padding: '8px 16px', 
-            backgroundColor: '#dc3545', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          Logout
-        </button>
-      </div>
+    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h1 style={{ margin: 0, fontSize: 28 }}>Admin Dashboard</h1>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button onClick={load} style={btnStyle}>Refresh</button>
+          <button onClick={onLogout} style={{ ...btnStyle, background: '#dc3545' }}>Logout</button>
+        </div>
+      </header>
 
-      {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-        <div style={{ 
-          backgroundColor: '#e3f2fd', 
-          padding: '20px', 
-          borderRadius: '8px', 
-          textAlign: 'center' 
-        }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>Total Users</h3>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{stats.totalUsers}</p>
-        </div>
-        <div style={{ 
-          backgroundColor: '#e8f5e8', 
-          padding: '20px', 
-          borderRadius: '8px', 
-          textAlign: 'center' 
-        }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#388e3c' }}>Parking Spots</h3>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{stats.totalSpots}</p>
-        </div>
-        <div style={{ 
-          backgroundColor: '#fff3e0', 
-          padding: '20px', 
-          borderRadius: '8px', 
-          textAlign: 'center' 
-        }}>
-          <h3 style={{ margin: '0 0 10px 0', color: '#f57c00' }}>Total Revenue</h3>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>${stats.totalRevenue}</p>
-        </div>
-      </div>
+      <nav style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+        {['overview','users','spots','reviews'].map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} style={{
+            ...tabBtnStyle,
+            background: activeTab === tab ? '#1976d2' : '#f1f3f5',
+            color: activeTab === tab ? '#fff' : '#222'
+          }}>{tab.charAt(0).toUpperCase()+tab.slice(1)}</button>
+        ))}
+      </nav>
 
-      {/* Users Table */}
-      <div style={{ marginBottom: '30px' }}>
-        <h2>Recent Users</h2>
-        <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ backgroundColor: '#f5f5f5' }}>
-              <tr>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Name</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Email</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Role</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.slice(0, 5).map((user, index) => (
-                <tr key={index}>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{user.name}</td>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{user.email}</td>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>
-                    <span style={{ 
-                      padding: '4px 8px', 
-                      borderRadius: '4px', 
-                      backgroundColor: user.is_admin ? '#e3f2fd' : '#f5f5f5',
-                      color: user.is_admin ? '#1976d2' : '#666'
-                    }}>
-                      {user.is_admin ? 'Admin' : 'User'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {users.length === 0 && (
-            <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-              No users found
-            </div>
-          )}
+      {activeTab === 'overview' && stats && (
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', marginBottom: 32 }}>
+          {statCard('Users', stats.totals.users)}
+            {statCard('Spots', stats.totals.parkingSpots, '#388e3c')}
+            {statCard('Reviews', stats.totals.reviews, '#6d4c41')}
+            {statCard('Available', stats.totals.availableSpots, '#0288d1')}
+            {statCard('Avg Rating', stats.averageRating, '#f57c00')}
+            {statCard('New Users 30d', stats.recent.newUsers, '#7b1fa2')}
+            {statCard('New Spots 30d', stats.recent.newSpots, '#512da8')}
+            {statCard('New Reviews 30d', stats.recent.newReviews, '#455a64')}
         </div>
-      </div>
+      )}
 
-      {/* Parking Spots Table */}
-      <div>
-        <h2>Parking Spots</h2>
-        <div style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ backgroundColor: '#f5f5f5' }}>
-              <tr>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Address</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Price</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Available</th>
-                <th style={{ padding: '12px', textAlign: 'left', borderBottom: '1px solid #ddd' }}>Owner</th>
-              </tr>
-            </thead>
-            <tbody>
-              {parkingSpots.slice(0, 5).map((spot, index) => (
-                <tr key={index}>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{spot.address}</td>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>${spot.price}/hr</td>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>
-                    <span style={{ 
-                      padding: '4px 8px', 
-                      borderRadius: '4px', 
-                      backgroundColor: spot.available ? '#e8f5e8' : '#ffebee',
-                      color: spot.available ? '#388e3c' : '#d32f2f'
-                    }}>
-                      {spot.available ? 'Available' : 'Occupied'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px', borderBottom: '1px solid #eee' }}>{spot.owner_id}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {parkingSpots.length === 0 && (
-            <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-              No parking spots found
-            </div>
-          )}
-        </div>
-      </div>
+      {activeTab === 'users' && (
+        <DataTable
+          title="Users"
+          columns={['Name','Email','Spots','Reviews','Created','Actions']}
+          rows={users.map(u => [u.name, u.email, u.parking_spots_count, u.reviews_count, new Date(u.created_at).toLocaleDateString(),
+            <button style={smallDangerBtn} onClick={() => handleDeleteUser(u.id)}>Delete</button>])}
+        />
+      )}
+
+      {activeTab === 'spots' && (
+        <DataTable
+          title="Parking Spots"
+          columns={['Location','Available','Reviews','Avg Rating','Owner','Created','Actions']}
+          rows={spots.map(s => [s.location, s.is_available ? 'Yes' : 'No', s.reviews_count, s.average_rating || '—', s.owner_email || s.owner_name || '—', new Date(s.created_at).toLocaleDateString(),
+            <button style={smallDangerBtn} onClick={() => handleDeleteSpot(s.id)}>Delete</button>])}
+        />
+      )}
+
+      {activeTab === 'reviews' && (
+        <DataTable
+          title="Reviews"
+          columns={['Rating','Comment','Reviewer','Spot','Created','Updated','Actions']}
+          rows={reviews.map(r => [r.rating, r.comment?.slice(0,60) || '', r.reviewer_email || r.reviewer_name, r.parking_spot_location, new Date(r.created_at).toLocaleDateString(), new Date(r.updated_at).toLocaleDateString(),
+            <button style={smallDangerBtn} onClick={() => handleDeleteReview(r.id)}>Delete</button>])}
+        />
+      )}
     </div>
   );
 }
+
+const btnStyle = {
+  background: '#1976d2',
+  color: '#fff',
+  padding: '8px 16px',
+  border: 'none',
+  borderRadius: 6,
+  cursor: 'pointer',
+  fontWeight: 500
+};
+
+const tabBtnStyle = {
+  border: 'none',
+  padding: '8px 14px',
+  borderRadius: 20,
+  cursor: 'pointer',
+  fontSize: 14,
+  fontWeight: 500,
+  transition: 'background .15s'
+};
+
+const smallDangerBtn = {
+  background: '#dc3545',
+  color: '#fff',
+  border: 'none',
+  padding: '4px 10px',
+  borderRadius: 4,
+  cursor: 'pointer',
+  fontSize: 12
+};
+
+function DataTable({ title, columns, rows }) {
+  return (
+    <section style={{ marginBottom: 40 }}>
+      <h2 style={{ margin: '0 0 12px 0', fontSize: 20 }}>{title}</h2>
+      <div style={{ overflowX: 'auto', background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 650 }}>
+          <thead>
+            <tr>
+              {columns.map(c => <th key={c} style={thStyle}>{c}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr><td colSpan={columns.length} style={{ padding: 24, textAlign: 'center', color: '#666' }}>No data</td></tr>
+            )}
+            {rows.map((r,i) => (
+              <tr key={i} style={{ background: i % 2 ? '#fafafa' : '#fff' }}>
+                {r.map((cell,j) => <td key={j} style={tdStyle}>{cell}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+const thStyle = { textAlign: 'left', padding: '10px 12px', fontSize: 12, textTransform: 'uppercase', letterSpacing: .5, borderBottom: '1px solid #eee', background: '#f8f9fa' };
+const tdStyle = { padding: '10px 12px', fontSize: 14, borderBottom: '1px solid #f1f3f5', verticalAlign: 'top' };
 
 export default AdminDashboard;
