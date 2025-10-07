@@ -181,60 +181,81 @@ router.post('/create-admin', async (req, res) => {
     const adminPassword = 'admin123';
     const adminName = 'Admin User';
 
-    // FIRST: Create the users table if it doesn't exist
+    // STEP 1: Create the users table with all columns from the start
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
+        is_admin BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // STEP 2: Create parking_spots table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS parking_spots (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        address VARCHAR(500) NOT NULL,
+        price_per_hour DECIMAL(10,2) NOT NULL,
+        latitude DECIMAL(10,8),
+        longitude DECIMAL(11,8),
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // STEP 3: Create reviews table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        parking_spot_id INTEGER REFERENCES parking_spots(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+        comment TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log('✅ Users table created/verified');
 
-    // Create index on email
+    // STEP 4: Create indexes
     await pool.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_parking_spots_user_id ON parking_spots(user_id)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_reviews_parking_spot_id ON reviews(parking_spot_id)');
 
-    // SECOND: Check if is_admin column exists and add it if not
-    const schemaResult = await pool.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'users' AND column_name = 'is_admin'
-    `);
-    
-    if (schemaResult.rows.length === 0) {
-      console.log('Adding is_admin column...');
-      await pool.query('ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE');
-      console.log('✅ Added is_admin column');
-    }
-
-    // Check if admin already exists
+    // STEP 5: Check if admin already exists
     const existing = await pool.query('SELECT * FROM users WHERE email = $1', [adminEmail]);
     if (existing.rows.length > 0) {
-      // Update existing user to be admin
       await pool.query('UPDATE users SET is_admin = true WHERE email = $1', [adminEmail]);
-      return res.json({ message: 'Admin user updated', email: adminEmail, password: adminPassword });
+      return res.json({ 
+        message: 'Admin user updated and database initialized', 
+        email: adminEmail, 
+        password: adminPassword,
+        tablesCreated: true
+      });
     }
 
-    // Hash password
+    // STEP 6: Hash password and create admin user
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
-
-    // Create admin user
     const result = await pool.query(
       'INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING id, name, email, is_admin',
       [adminName, adminEmail, hashedPassword, true]
     );
 
     res.json({ 
-      message: 'Admin user created successfully', 
+      message: 'Admin user created and database initialized successfully', 
       user: result.rows[0],
       email: adminEmail,
-      password: adminPassword
+      password: adminPassword,
+      tablesCreated: true
     });
   } catch (error) {
-    console.error('Error creating admin:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error creating admin and initializing DB:', error);
+    res.status(500).json({ error: error.message, details: error.stack });
   }
 });
 
