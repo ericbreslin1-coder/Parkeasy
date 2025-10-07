@@ -29,9 +29,25 @@ export function createApp() {
   const authLimiter = rateLimit({ windowMs: 15*60*1000, max: 5 });
   app.use(limiter);
 
-  // Multi-origin CORS support - TEMPORARY: Allow all origins for testing
+  // Multi-origin CORS support for mobile app and admin website
+  const corsOrigins = [
+    'https://parkeasy-frontend-clean.vercel.app', // Admin website
+    'http://localhost:3000', // Local development
+    'http://localhost:19006', // Expo development
+    'exp://192.168.1.100:19000', // Expo mobile development (adjust IP as needed)
+  ];
+  
   app.use(cors({
-    origin: true, // Allow all origins temporarily
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+      
+      if (corsOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   }));
   app.use(express.json({ limit: '10mb' }));
