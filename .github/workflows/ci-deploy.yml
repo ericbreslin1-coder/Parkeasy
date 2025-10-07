@@ -127,7 +127,19 @@ jobs:
         env:
           VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
         run: |
-          if [ -n "$VERCEL_DEPLOY_HOOK" ]; then curl -X POST "$VERCEL_DEPLOY_HOOK" -f -s -o /dev/null && echo "Vercel deploy triggered."; else echo "Vercel hook not set"; fi
+          if [ -n "$VERCEL_DEPLOY_HOOK" ]; then 
+            echo "Triggering Vercel deployment..."
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$VERCEL_DEPLOY_HOOK")
+            if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "201" ] || [ "$HTTP_STATUS" = "202" ]; then
+              echo "✅ Vercel deploy triggered successfully (HTTP $HTTP_STATUS)"
+            else
+              echo "❌ Vercel deploy failed (HTTP $HTTP_STATUS)"
+              exit 1
+            fi
+          else 
+            echo "⚠️  VERCEL_DEPLOY_HOOK not configured - skipping frontend deploy"
+            echo "See VERCEL_SETUP.md for configuration instructions"
+          fi
 
 
 # HOW TO ENABLE AUTO DEPLOY:
