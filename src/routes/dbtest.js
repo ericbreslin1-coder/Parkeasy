@@ -94,4 +94,44 @@ router.get('/test-db', async (req, res) => {
   }
 });
 
-export default router;
+// Test user creation directly
+router.post('/test-user-creation', async (req, res) => {
+  try {
+    // Test direct user insertion
+    const testEmail = `test-${Date.now()}@example.com`;
+    const testName = 'Test User';
+    const testPassword = 'hashedpassword123'; // Not actually hashed for testing
+    
+    console.log('Attempting to insert test user...');
+    const insertResult = await pool.query(
+      'INSERT INTO users (name, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING *',
+      [testName, testEmail, testPassword, false]
+    );
+    
+    console.log('Insert successful:', insertResult.rows[0]);
+    
+    // Test user selection
+    const selectResult = await pool.query('SELECT * FROM users WHERE email = $1', [testEmail]);
+    console.log('Select successful:', selectResult.rows[0]);
+    
+    // Count all users
+    const countResult = await pool.query('SELECT COUNT(*) as total FROM users');
+    console.log('User count:', countResult.rows[0]);
+    
+    res.json({
+      success: true,
+      insertedUser: insertResult.rows[0],
+      selectedUser: selectResult.rows[0],
+      totalUsers: countResult.rows[0].total
+    });
+    
+  } catch (error) {
+    console.error('Test user creation error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      code: error.code,
+      detail: error.detail
+    });
+  }
+});
