@@ -1,53 +1,223 @@
 # ParkEasy Backend
 
-A Node.js/Express backend for the ParkEasy parking management system with JWT authentication and PostgreSQL database.
+A comprehensive Node.js/Express backend for the ParkEasy parking management system with JWT authentication, PostgreSQL database, and full CRUD operations.
 
-## Features
+## 🚀 Features
 
-- User registration and authentication with JWT
-- Password hashing with bcrypt
-- CRUD operations for parking spots
-- Authorization middleware for protected endpoints
-- Ownership-based access control
+- **Authentication System**
+  - User registration and login with JWT
+  - Password hashing with bcrypt
+  - Protected routes with middleware
+  - Admin role-based access control
 
-## Setup
+- **Parking Management**
+  - CRUD operations for parking spots
+  - Advanced search and filtering
+  - Pagination support
+  - Owner-based access control
 
-### Prerequisites
+- **Reviews System**
+  - Create, read, update, delete reviews
+  - Rating system (1-5 stars)
+  - Average rating calculations
+  - User-based review management
+
+- **Admin Dashboard**
+  - User management
+  - Parking spot management
+  - Review moderation
+  - Analytics and statistics
+
+## 📋 Prerequisites
 
 - Node.js (v14 or higher)
 - PostgreSQL (v12 or higher)
+- npm or yarn
 
-### Installation
+## 🛠️ Installation
 
-1. Install dependencies:
+### 1. Clone and Setup
+
 ```bash
+git clone <repository-url>
+cd Parkeasy
 npm install
 ```
 
-2. Set up environment variables:
+### 2. Environment Configuration
+
 ```bash
 cp .env.example .env
 ```
 
 Edit `.env` with your configuration:
-```
-PORT=3000
+
+```env
+# Database Configuration
 DATABASE_URL=postgresql://username:password@localhost:5432/parkeasy
-JWT_SECRET=your_secret_key_here
+
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# JWT Configuration
+JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
+JWT_EXPIRES_IN=7d
+
+# Admin Configuration
+ADMIN_EMAILS=admin@parkeasy.com,your-admin-email@example.com
+
+# API Configuration
+API_BASE_URL=http://localhost:3000/api
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:3001
 ```
 
-3. Create the database and run migrations:
+### 3. Database Setup
+
 ```bash
 # Create database
 createdb parkeasy
 
-# Run migrations
+# Run migrations in order
 psql -d parkeasy -f migrations/001_create_users_table.sql
 psql -d parkeasy -f migrations/002_create_parking_spots_table.sql
+psql -d parkeasy -f migrations/003_create_reviews_table.sql
 ```
 
-4. Start the server:
+### 4. Start the Server
+
 ```bash
+# Development mode
+npm run dev
+
+# Production mode
+npm start
+```
+
+The server will start on `http://localhost:3000`
+
+## 📚 API Documentation
+
+### Authentication Endpoints
+
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - User login
+
+### Parking Spots Endpoints
+
+- `GET /api/parking` - List parking spots (with search, filter, pagination)
+- `GET /api/parking/:id` - Get single parking spot
+- `POST /api/parking` - Create parking spot (protected)
+- `PUT /api/parking/:id` - Update parking spot (protected, owner only)
+- `DELETE /api/parking/:id` - Delete parking spot (protected, owner only)
+
+### Reviews Endpoints
+
+- `GET /api/reviews/spot/:spotId` - Get reviews for a parking spot
+- `GET /api/reviews/spot/:spotId/average` - Get average rating for a spot
+- `POST /api/reviews` - Create review (protected)
+- `PUT /api/reviews/:id` - Update review (protected, owner only)
+- `DELETE /api/reviews/:id` - Delete review (protected, owner only)
+- `GET /api/reviews/user/my-reviews` - Get user's own reviews (protected)
+
+### Admin Endpoints (Admin Only)
+
+- `GET /api/admin/users` - Get all users
+- `GET /api/admin/parking-spots` - Get all parking spots
+- `GET /api/admin/reviews` - Get all reviews
+- `GET /api/admin/stats` - Get dashboard statistics
+- `DELETE /api/admin/users/:id` - Delete user
+- `DELETE /api/admin/parking-spots/:id` - Delete parking spot
+- `DELETE /api/admin/reviews/:id` - Delete review
+
+## 🔧 Advanced Features
+
+### Search and Filtering
+
+The parking spots endpoint supports advanced querying:
+
+```
+GET /api/parking?search=downtown&available=true&limit=20&offset=0&sortBy=created_at&sortOrder=DESC
+```
+
+Parameters:
+- `search` - Search in location field
+- `available` - Filter by availability (true/false)
+- `limit` - Number of results per page (default: 50)
+- `offset` - Pagination offset (default: 0)
+- `sortBy` - Sort field (created_at, location, average_rating, review_count)
+- `sortOrder` - Sort direction (ASC, DESC)
+
+### Admin System
+
+To become an admin, add your email to the `ADMIN_EMAILS` environment variable:
+
+```env
+ADMIN_EMAILS=admin@parkeasy.com,youremail@example.com,another-admin@example.com
+```
+
+## 🏗️ Project Structure
+
+```
+src/
+├── config.js           # Environment configuration
+├── index.js            # Main server file
+├── db/
+│   └── index.js        # Database connection
+├── middleware/
+│   └── auth.js         # Authentication middleware
+└── routes/
+    ├── auth.js         # Authentication routes
+    ├── parking.js      # Parking management routes
+    ├── reviews.js      # Reviews system routes
+    └── admin.js        # Admin dashboard routes
+
+migrations/
+├── 001_create_users_table.sql
+├── 002_create_parking_spots_table.sql
+└── 003_create_reviews_table.sql
+```
+
+## 🔒 Security Features
+
+- Password hashing with bcrypt
+- JWT token authentication
+- SQL injection prevention with parameterized queries
+- CORS configuration
+- Admin role-based access control
+- Owner-based resource protection
+
+## 🚀 Deployment
+
+### Environment Variables for Production
+
+```env
+NODE_ENV=production
+JWT_SECRET=<strong-secret-key>
+DATABASE_URL=<production-database-url>
+CORS_ORIGIN=<frontend-domain>
+```
+
+### Database Considerations
+
+- Ensure PostgreSQL is properly configured
+- Set up database backups
+- Consider connection pooling for high traffic
+- Monitor database performance
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details
 # Development mode with auto-reload
 npm run dev
 

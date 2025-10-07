@@ -1,0 +1,30 @@
+.admin-dashboard { padding: 1rem; font-family: system-ui, Arial, sans-serif; }
+.admin-header { margin-bottom: 1rem; }
+.admin-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.tab { background:#f3f4f6; border:1px solid #d1d5db; padding:.5rem .9rem; border-radius:6px; cursor:pointer; font-size:.9rem; }
+.tab.active { background:#2563eb; color:#fff; border-color:#2563eb; }
+.admin-content { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:1rem; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+.stats-grid { display:grid; gap:1rem; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); }
+.stat-card { background:#111827; color:#f9fafb; padding:.75rem; border-radius:8px; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; min-height:100px; }
+.stat-card h3, .stat-card h4 { margin:0 0 .5rem; font-size:.85rem; font-weight:600; letter-spacing:.5px; text-transform:uppercase; }
+.stat-number { font-size:1.6rem; font-weight:700; }
+.stat-card.small { min-height:auto; }
+.mini-stats { font-size:.7rem; line-height:1.1rem; }
+.admin-table-container { overflow-x:auto; }
+.admin-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+.admin-table th, .admin-table td { border:1px solid #e5e7eb; padding:.5rem .6rem; text-align:left; white-space:nowrap; }
+.admin-table th { background:#f9fafb; font-weight:600; }
+.btn-delete-small { background:#dc2626; color:#fff; border:none; padding:.35rem .6rem; font-size:.7rem; border-radius:4px; cursor:pointer; }
+.btn-delete-small:hover { background:#b91c1c; }
+.status-available { background:#10b981; color:#fff; padding:.2rem .5rem; border-radius:999px; font-size:.65rem; }
+.status-unavailable { background:#6b7280; color:#fff; padding:.2rem .5rem; border-radius:999px; font-size:.65rem; }
+.loading { text-align:center; padding:2rem; }
+.comment-cell { max-width:220px; white-space:normal; }
+@media (max-width: 640px){
+  .stats-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); }
+  .admin-tabs { flex-direction:column; }
+  .tab { width:100%; text-align:center; }
+  .admin-table th, .admin-table td { font-size:.7rem; }
+  .stat-number { font-size:1.3rem; }
+  .admin-dashboard { padding:.5rem; }
+}
