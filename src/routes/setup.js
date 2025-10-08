@@ -1,5 +1,7 @@
-const express = require('express');
-const db = require('../db/database');
+import express from 'express';
+import bcrypt from 'bcrypt';
+import pool from '../db/index.js';
+
 const router = express.Router();
 
 // Direct SQL execution endpoint for manual database setup
@@ -22,7 +24,7 @@ router.post('/execute-sql', async (req, res) => {
         `;
         
         console.log('Creating users table...');
-        await db.query(createUsersTable);
+        await pool.query(createUsersTable);
         console.log('Users table created successfully');
         
         // Create parking_spots table
@@ -43,7 +45,7 @@ router.post('/execute-sql', async (req, res) => {
         `;
         
         console.log('Creating parking_spots table...');
-        await db.query(createParkingSpotsTable);
+        await pool.query(createParkingSpotsTable);
         console.log('Parking spots table created successfully');
         
         // Create reviews table
@@ -60,15 +62,15 @@ router.post('/execute-sql', async (req, res) => {
         `;
         
         console.log('Creating reviews table...');
-        await db.query(createReviewsTable);
+        await pool.query(createReviewsTable);
         console.log('Reviews table created successfully');
         
         // Create indexes
         console.log('Creating indexes...');
-        await db.query('CREATE INDEX IF NOT EXISTS idx_parking_spots_owner ON parking_spots(owner_id);');
-        await db.query('CREATE INDEX IF NOT EXISTS idx_parking_spots_location ON parking_spots(latitude, longitude);');
-        await db.query('CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);');
-        await db.query('CREATE INDEX IF NOT EXISTS idx_reviews_spot ON reviews(parking_spot_id);');
+        await pool.query('CREATE INDEX IF NOT EXISTS idx_parking_spots_owner ON parking_spots(owner_id);');
+        await pool.query('CREATE INDEX IF NOT EXISTS idx_parking_spots_location ON parking_spots(latitude, longitude);');
+        await pool.query('CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);');
+        await pool.query('CREATE INDEX IF NOT EXISTS idx_reviews_spot ON reviews(parking_spot_id);');
         console.log('Indexes created successfully');
         
         // Create triggers for updated_at
@@ -83,23 +85,23 @@ router.post('/execute-sql', async (req, res) => {
             $$ language 'plpgsql';
         `;
         
-        await db.query(createTriggerFunction);
+        await pool.query(createTriggerFunction);
         
-        await db.query(`
+        await pool.query(`
             DROP TRIGGER IF EXISTS update_users_updated_at ON users;
             CREATE TRIGGER update_users_updated_at 
                 BEFORE UPDATE ON users 
                 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
         `);
         
-        await db.query(`
+        await pool.query(`
             DROP TRIGGER IF EXISTS update_parking_spots_updated_at ON parking_spots;
             CREATE TRIGGER update_parking_spots_updated_at 
                 BEFORE UPDATE ON parking_spots 
                 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
         `);
         
-        await db.query(`
+        await pool.query(`
             DROP TRIGGER IF EXISTS update_reviews_updated_at ON reviews;
             CREATE TRIGGER update_reviews_updated_at 
                 BEFORE UPDATE ON reviews 
@@ -110,7 +112,6 @@ router.post('/execute-sql', async (req, res) => {
         
         // Create admin user
         console.log('Creating admin user...');
-        const bcrypt = require('bcrypt');
         const hashedPassword = await bcrypt.hash('admin123', 10);
         
         const insertAdmin = `
@@ -124,7 +125,7 @@ router.post('/execute-sql', async (req, res) => {
             RETURNING id, email, name, is_admin;
         `;
         
-        const adminResult = await db.query(insertAdmin, [
+        const adminResult = await pool.query(insertAdmin, [
             'admin@parkeasy.com',
             hashedPassword,
             'Admin User',
@@ -135,15 +136,15 @@ router.post('/execute-sql', async (req, res) => {
         console.log('Admin user created/updated:', adminResult.rows[0]);
         
         // Verify everything was created
-        const tablesCheck = await db.query(`
+        const tablesCheck = await pool.query(`
             SELECT table_name 
             FROM information_schema.tables 
             WHERE table_schema = 'public'
             ORDER BY table_name;
         `);
         
-        const userCount = await db.query('SELECT COUNT(*) FROM users;');
-        const adminCheck = await db.query('SELECT id, email, name, is_admin FROM users WHERE is_admin = true;');
+        const userCount = await pool.query('SELECT COUNT(*) FROM users;');
+        const adminCheck = await pool.query('SELECT id, email, name, is_admin FROM users WHERE is_admin = true;');
         
         res.json({
             success: true,
@@ -165,4 +166,4 @@ router.post('/execute-sql', async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;
